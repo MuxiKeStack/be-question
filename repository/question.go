@@ -1,0 +1,78 @@
+package repository
+
+import (
+	"context"
+	questionv1 "github.com/MuxiKeStack/be-api/gen/proto/question/v1"
+	"github.com/MuxiKeStack/be-question/domain"
+	"github.com/MuxiKeStack/be-question/pkg/logger"
+	"github.com/MuxiKeStack/be-question/repository/cache"
+	"github.com/MuxiKeStack/be-question/repository/dao"
+	"time"
+)
+
+type QuestionRepository interface {
+	FindById(ctx context.Context, questionId int64) (domain.Question, error)
+	Create(ctx context.Context, question domain.Question) (int64, error)
+}
+
+type CachedQuestionRepository struct {
+	dao   dao.QuestionDAO
+	cache cache.QuestionCache
+	l     logger.Logger
+}
+
+func NewCachedQuestionRepository(dao dao.QuestionDAO, cache cache.QuestionCache, l logger.Logger) QuestionRepository {
+	return &CachedQuestionRepository{dao: dao, cache: cache, l: l}
+}
+
+func (repo *CachedQuestionRepository) FindById(ctx context.Context, questionId int64) (domain.Question, error) {
+	res, err := repo.cache.Get(ctx, questionId)
+	if err == nil {
+		return res, nil
+	}
+	if err != cache.ErrKeyNotExist {
+		// 如果数据库撑不住无缓存，全部查库，就在这里return
+	}
+	q, err := repo.dao.FindById(ctx, questionId)
+	// 不回写，因为这是个低频操作，上面查的缓存是从发布时预热拿来的
+	return repo.toDomain(q), err
+}
+
+func (repo *CachedQuestionRepository) Create(ctx context.Context, question domain.Question) (int64, error) {
+	// 预缓存一下这个问题
+	id, err := repo.dao.Insert(ctx, repo.toEntity(question))
+	if err != nil {
+		return 0, err
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		er := repo.cache.Set(ctx, question)
+		if er != nil {
+			repo.l.Error("预缓存问题失败", logger.Error(err))
+		}
+	}()
+	return id, nil
+}
+
+func (repo *CachedQuestionRepository) toDomain(q dao.Question) domain.Question {
+	return domain.Question{
+		Id:           q.Id,
+		QuestionerId: q.QuestionerId,
+		Biz:          questionv1.Biz(q.Biz),
+		BizId:        q.BizId,
+		Content:      q.Content,
+		Utime:        time.UnixMilli(q.Utime),
+		Ctime:        time.UnixMilli(q.Ctime),
+	}
+}
+
+func (repo *CachedQuestionRepository) toEntity(q domain.Question) dao.Question {
+	return dao.Question{
+		Id:           q.Id,
+		QuestionerId: q.QuestionerId,
+		Biz:          int32(q.Biz),
+		BizId:        q.BizId,
+		Content:      q.Content,
+	}
+}
