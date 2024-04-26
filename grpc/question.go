@@ -5,7 +5,9 @@ import (
 	questionv1 "github.com/MuxiKeStack/be-api/gen/proto/question/v1"
 	"github.com/MuxiKeStack/be-question/domain"
 	"github.com/MuxiKeStack/be-question/service"
+	"github.com/ecodeclub/ekit/slice"
 	"google.golang.org/grpc"
+	"math"
 )
 
 type QuestionServiceServer struct {
@@ -41,6 +43,53 @@ func (s *QuestionServiceServer) GetDetailById(ctx context.Context, request *ques
 func (s *QuestionServiceServer) InviteUserToAnswer(ctx context.Context, request *questionv1.InviteUserToAnswerRequest) (*questionv1.InviteUserToAnswerResponse, error) {
 	err := s.svc.InviteUserToAnswer(ctx, request.GetInviter(), request.GetInvitees(), request.GetQuestionId())
 	return &questionv1.InviteUserToAnswerResponse{}, err
+}
+
+func (s *QuestionServiceServer) CountBizQuestions(ctx context.Context, request *questionv1.CountQuestionsRequest) (*questionv1.CountQuestionsResponse, error) {
+	count, err := s.svc.CountBizQuestions(ctx, request.GetBiz(), request.GetBizId())
+	return &questionv1.CountQuestionsResponse{Count: count}, err
+}
+
+func (s *QuestionServiceServer) ListBizQuestions(ctx context.Context, request *questionv1.ListBizQuestionsRequest) (*questionv1.ListBizQuestionsResponse, error) {
+	curQuestionId := request.GetCurQuestionId()
+	if curQuestionId == 0 {
+		curQuestionId = math.MaxInt64
+	}
+	questions, err := s.svc.ListBizQuestions(ctx, request.GetBiz(), request.GetBizId(), curQuestionId, request.GetLimit())
+	return &questionv1.ListBizQuestionsResponse{
+		Questions: slice.Map(questions, func(idx int, src domain.Question) *questionv1.Question {
+			return &questionv1.Question{
+				Id:           src.Id,
+				QuestionerId: src.QuestionerId,
+				Biz:          src.Biz,
+				BizId:        src.BizId,
+				Content:      src.Content,
+				Utime:        src.Utime.UnixMilli(),
+				Ctime:        src.Ctime.UnixMilli(),
+			}
+		}),
+	}, err
+}
+
+func (s *QuestionServiceServer) ListUserQuestions(ctx context.Context, request *questionv1.ListUserQuestionsRequest) (*questionv1.ListUserQuestionsResponse, error) {
+	curQuestionId := request.GetCurQuestionId()
+	if curQuestionId == 0 {
+		curQuestionId = math.MaxInt64
+	}
+	questions, err := s.svc.ListUserQuestions(ctx, request.GetUid(), curQuestionId, request.GetLimit())
+	return &questionv1.ListUserQuestionsResponse{
+		Questions: slice.Map(questions, func(idx int, src domain.Question) *questionv1.Question {
+			return &questionv1.Question{
+				Id:           src.Id,
+				QuestionerId: src.QuestionerId,
+				Biz:          src.Biz,
+				BizId:        src.BizId,
+				Content:      src.Content,
+				Utime:        src.Utime.UnixMilli(),
+				Ctime:        src.Ctime.UnixMilli(),
+			}
+		}),
+	}, err
 }
 
 func convertToDomain(q *questionv1.Question) domain.Question {

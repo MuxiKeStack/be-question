@@ -7,12 +7,16 @@ import (
 	"github.com/MuxiKeStack/be-question/pkg/logger"
 	"github.com/MuxiKeStack/be-question/repository/cache"
 	"github.com/MuxiKeStack/be-question/repository/dao"
+	"github.com/ecodeclub/ekit/slice"
 	"time"
 )
 
 type QuestionRepository interface {
 	FindById(ctx context.Context, questionId int64) (domain.Question, error)
 	Create(ctx context.Context, question domain.Question) (int64, error)
+	CountBizQuestions(ctx context.Context, biz questionv1.Biz, bizId int64) (int64, error)
+	ListBizQuestions(ctx context.Context, biz questionv1.Biz, bizId int64, curQuestionId int64, limit int64) ([]domain.Question, error)
+	ListUserQuestions(ctx context.Context, uid int64, curQuestionId int64, limit int64) ([]domain.Question, error)
 }
 
 type CachedQuestionRepository struct {
@@ -53,6 +57,24 @@ func (repo *CachedQuestionRepository) Create(ctx context.Context, question domai
 		}
 	}()
 	return id, nil
+}
+
+func (repo *CachedQuestionRepository) CountBizQuestions(ctx context.Context, biz questionv1.Biz, bizId int64) (int64, error) {
+	return repo.dao.CountBizQuestions(ctx, int32(biz), bizId)
+}
+
+func (repo *CachedQuestionRepository) ListBizQuestions(ctx context.Context, biz questionv1.Biz, bizId int64, curQuestionId int64, limit int64) ([]domain.Question, error) {
+	questions, err := repo.dao.FindByBiz(ctx, int32(biz), bizId, curQuestionId, limit)
+	return slice.Map(questions, func(idx int, src dao.Question) domain.Question {
+		return repo.toDomain(src)
+	}), err
+}
+
+func (repo *CachedQuestionRepository) ListUserQuestions(ctx context.Context, uid int64, curQuestionId int64, limit int64) ([]domain.Question, error) {
+	questions, err := repo.dao.FindByUser(ctx, uid, curQuestionId, limit)
+	return slice.Map(questions, func(idx int, src dao.Question) domain.Question {
+		return repo.toDomain(src)
+	}), err
 }
 
 func (repo *CachedQuestionRepository) toDomain(q dao.Question) domain.Question {

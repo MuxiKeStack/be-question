@@ -13,6 +13,9 @@ type QuestionService interface {
 	Publish(ctx context.Context, question domain.Question) (int64, error)
 	GetDetailById(ctx context.Context, questionId int64) (domain.Question, error)
 	InviteUserToAnswer(ctx context.Context, inviter int64, invitees []int64, questionId int64) error
+	CountBizQuestions(ctx context.Context, biz questionv1.Biz, bizId int64) (int64, error)
+	ListBizQuestions(ctx context.Context, biz questionv1.Biz, bizId int64, curQuestionId int64, limit int64) ([]domain.Question, error)
+	ListUserQuestions(ctx context.Context, uid int64, curQuestionId int64, limit int64) ([]domain.Question, error)
 }
 
 type questionService struct {
@@ -57,4 +60,16 @@ func (s *questionService) InviteUserToAnswer(ctx context.Context, inviter int64,
 		return fmt.Errorf("未找到具体的业务处理逻辑 %s", q.Biz)
 	}
 	return handler.InviteUserToAnswer(ctx, inviter, invitees, q)
+}
+
+func (s *questionService) CountBizQuestions(ctx context.Context, biz questionv1.Biz, bizId int64) (int64, error) {
+	return s.repo.CountBizQuestions(ctx, biz, bizId)
+}
+
+func (s *questionService) ListBizQuestions(ctx context.Context, biz questionv1.Biz, bizId int64, curQuestionId int64, limit int64) ([]domain.Question, error) {
+	return s.repo.ListBizQuestions(ctx, biz, bizId, curQuestionId, limit)
+}
+
+func (s *questionService) ListUserQuestions(ctx context.Context, uid int64, curQuestionId int64, limit int64) ([]domain.Question, error) {
+	return s.repo.ListUserQuestions(ctx, uid, curQuestionId, limit)
 }
