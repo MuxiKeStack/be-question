@@ -37,6 +37,9 @@ func (s *QuestionServiceServer) GetRecommendationInviteeUids(ctx context.Context
 
 func (s *QuestionServiceServer) GetDetailById(ctx context.Context, request *questionv1.GetDetailByIdRequest) (*questionv1.GetDetailByIdResponse, error) {
 	q, err := s.svc.GetDetailById(ctx, request.GetQuestionId())
+	if err == service.ErrQuestionNotFound {
+		return &questionv1.GetDetailByIdResponse{}, questionv1.ErrorQuestionNotFound("提问不存在: %d", request.GetQuestionId())
+	}
 	return &questionv1.GetDetailByIdResponse{Question: convertToVo(q)}, err
 }
 

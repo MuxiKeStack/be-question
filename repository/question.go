@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+var ErrQuestionNotFound = dao.ErrRecordNotFound
+
 type QuestionRepository interface {
 	FindById(ctx context.Context, questionId int64) (domain.Question, error)
 	Create(ctx context.Context, question domain.Question) (int64, error)

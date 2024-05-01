@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+var ErrRecordNotFound = gorm.ErrRecordNotFound
+
 type QuestionDAO interface {
 	FindById(ctx context.Context, questionId int64) (Question, error)
 	Insert(ctx context.Context, question Question) (int64, error)

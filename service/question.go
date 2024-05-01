@@ -8,6 +8,8 @@ import (
 	"github.com/MuxiKeStack/be-question/repository"
 )
 
+var ErrQuestionNotFound = repository.ErrQuestionNotFound
+
 type QuestionService interface {
 	GetRecommendationInviteeUids(ctx context.Context, questionId int64, curUid int64, limit int64) ([]int64, error)
 	Publish(ctx context.Context, question domain.Question) (int64, error)
