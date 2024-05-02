@@ -33,16 +33,18 @@ func (c *CourseHandler) GetRecommendationInviteeUids(ctx context.Context, questi
 func (c *CourseHandler) InviteUserToAnswer(ctx context.Context, inviter int64, invitees []int64, question domain.Question) error {
 	events := make([]event.FeedEvent, 0, len(invitees))
 	for _, invitee := range invitees {
-		events = append(events, event.FeedEvent{
-			Type: feedv1.EventType_InviteToAnswer, // 我觉得这里可以定义枚举值
-			Metadata: map[string]string{
-				"inviter":    strconv.FormatInt(inviter, 10),
-				"invitee":    strconv.FormatInt(invitee, 10),
-				"biz":        question.Biz.String(), // 传出当前服务，则该枚举值变为易于理解的string
-				"bizId":      strconv.FormatInt(question.BizId, 10),
-				"questionId": strconv.FormatInt(question.Id, 10),
-			},
-		})
+		if inviter != invitee {
+			events = append(events, event.FeedEvent{
+				Type: feedv1.EventType_InviteToAnswer, // 我觉得这里可以定义枚举值
+				Metadata: map[string]string{
+					"inviter":    strconv.FormatInt(inviter, 10),
+					"invitee":    strconv.FormatInt(invitee, 10),
+					"biz":        question.Biz.String(), // 传出当前服务，则该枚举值变为易于理解的string
+					"bizId":      strconv.FormatInt(question.BizId, 10),
+					"questionId": strconv.FormatInt(question.Id, 10),
+				},
+			})
+		}
 	}
 	err := c.producer.BatchProduceFeedEvent(ctx, events)
 	// TODO 到达feed的消费者，消费成功，要把 course 和 question 预热一下，产生一条预热的消息，然后course和question消费掉，以进行预热
